@@ -1,0 +1,37 @@
+<modDesc descVersion="94">
+    <author>Beeves</author>
+    <version>1.0.0.0</version>
+    <title>
+        <en>Dynamic Economy</en>
+        <de>Dynamische Wirtschaft</de>
+    </title>
+    <description>
+        <en><![CDATA[
+Dynamic Economy will adjust the market prices based on a supply-and-demand system.
+
+This is to encourage you to branch out into other types of jobs on your farm as your farm grows, and adds a fun competitive element to multiplayer games.
+
+The market demands a supply of €75,000 worth of each product or type of animal annually. €135,000 on medium, and €225,000 on easy difficulty. The demand is doubled when seasonal grown is turned off.
+
+Prices fluctuate between 10% and 120% of their normal value. A new game starts off with everything in high demand to help provide an early game boost to get started.
+
+A minimum 4-hour grace period when selling prevents immediate negative impacts on market prices. You will see the impacts to the market a few hours after selling if you exceed the annual demand.
+        ]]></en>
+        <de><![CDATA[
+        Dynamic Economy wird die Marktpreise auf der Grundlage eines Angebots- und Nachfragesystems anpassen.
+
+Dies soll Sie dazu ermutigen, sich anderen Arten von Jobs auf Ihrer Farm zuzuwenden, wenn Ihre Farm wächst, und fügt Multiplayer-Spielen ein unterhaltsames Wettbewerbselement hinzu.
+
+Der Markt verlangt für jedes Produkt bzw. jede Tierart jährlich einen Vorrat im Wert von 75.000 Euro. 135.000 € im mittleren Schwierigkeitsgrad und 225.000 € im leichten Schwierigkeitsgrad. Der Bedarf verdoppelt sich, wenn der Saisonanbau ausgeschaltet wird.
+
+Die Preise schwanken zwischen 10 % und 120 % ihres Normalwertes. Ein neues Spiel beginnt mit allem, was sehr gefragt ist, um einen frühen Spielschub für den Start zu ermöglichen.
+
+Eine Nachfrist von mindestens 4 Stunden beim Verkauf verhindert unmittelbare negative Auswirkungen auf die Marktpreise. Wenn Sie die jährliche Nachfrage überschreiten, werden Sie die Auswirkungen auf den Markt einige Stunden nach dem Verkauf sehen.
+        ]]></de>
+    </description>
+    <iconFilename>icon_dynamicEconomy.dds</iconFilename>
+    <multiplayer supported="true"/>
+    <extraSourceFiles>
+        <sourceFile filename="script.lua"/>
+    </extraSourceFiles>
+</modDesc>
