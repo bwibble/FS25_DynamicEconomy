@@ -151,7 +151,7 @@ local function loadXML()
     if fileExists(XMLPath) then
         xmlId = loadXMLFile("SupplyAndDemandXML", XMLPath)
     else
-        xmlId = createXMLFile("SupplyAndDemandXML", XMLPath, "SupplyAndDemandXML")
+        xmlId = createXMLFile("SupplyAndDemandXML", XMLPath, "SupplyAndDemand")
     end
 
     local savegamePath = "SupplyAndDemand.savegame"..tostring(g_currentMission.missionInfo.savegameIndex)
