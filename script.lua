@@ -1,47 +1,47 @@
-DynamicEconomy = {}
+SupplyAndDemand = {}
 
 local annualProfitCap = 75000
 local increaseCap = 1.2
 local decreaseCap = 0.4
 local gracePeriod = 4
 
-DynamicEconomyEvent = {}
-local DynamicEconomyEvent_mt = Class(DynamicEconomyEvent, Event)
-InitEventClass(DynamicEconomyEvent, "DynamicEconomyEvent")
+SupplyAndDemandEvent = {}
+local SupplyAndDemandEvent_mt = Class(SupplyAndDemandEvent, Event)
+InitEventClass(SupplyAndDemandEvent, "SupplyAndDemandEvent")
 
-function DynamicEconomyEvent.emptyNew()
-    local self = Event.new(DynamicEconomyEvent_mt)
+function SupplyAndDemandEvent.emptyNew()
+    local self = Event.new(SupplyAndDemandEvent_mt)
     return self
 end
 
-function DynamicEconomyEvent.new(subTypeName, subTypeFactor)
-    local self = DynamicEconomyEvent.emptyNew()
+function SupplyAndDemandEvent.new(subTypeName, subTypeFactor)
+    local self = SupplyAndDemandEvent.emptyNew()
     self.subTypeName = subTypeName
     self.subTypeFactor = subTypeFactor
     return self
 end
 
-function DynamicEconomyEvent:readStream(streamId, connection)
+function SupplyAndDemandEvent:readStream(streamId, connection)
     self.subTypeName = streamReadString(streamId)
     self.subTypeFactor = streamReadFloat32(streamId)
     self:run(connection)
 end
 
-function DynamicEconomyEvent:writeStream(streamId, connection)
+function SupplyAndDemandEvent:writeStream(streamId, connection)
     streamWriteString(streamId, self.subTypeName)
 	streamWriteFloat32(streamId, self.subTypeFactor)
 end
 
-function DynamicEconomyEvent:run(connection)
+function SupplyAndDemandEvent:run(connection)
     if not connection:getIsServer() then
-        DynamicEconomy.subTypeFactors[self.subTypeName] = self.subTypeFactor
+        SupplyAndDemand.subTypeFactors[self.subTypeName] = self.subTypeFactor
     end
 end
 
 local function broadcastSubTypeFactors()
-    for subTypeName, subTypeFactor in pairs(DynamicEconomy.subTypeFactors) do
+    for subTypeName, subTypeFactor in pairs(SupplyAndDemand.subTypeFactors) do
         g_client:getServerConnection():sendEvent(
-            DynamicEconomyEvent.new(subTypeName, subTypeFactor)
+            SupplyAndDemandEvent.new(subTypeName, subTypeFactor)
         )
     end 
 end
@@ -51,11 +51,11 @@ local function catchSubTypeSale(sellerInfo, func, ...)
         local clusterId = sellerInfo.clusterId
         local subTypeIndex = sellerInfo.object:getClusterById(clusterId).subTypeIndex
         local subTypeName = g_currentMission.animalSystem.subTypes[subTypeIndex].name
-        if not DynamicEconomy.subTypes[subTypeName] then
+        if not SupplyAndDemand.subTypes[subTypeName] then
             populateMissingProducts()
         end
 
-        local subType = DynamicEconomy.subTypes[subTypeName]
+        local subType = SupplyAndDemand.subTypes[subTypeName]
         subType.recentSold = subType.recentSold + sellerInfo.sellPrice
         subType.gracePeriod = gracePeriod
     end
@@ -65,11 +65,11 @@ end
 
 local function catchFillTypeSale(_, _, amountLiters, fillTypeIndex)
     local fillTypeName = g_fillTypeManager.indexToName[fillTypeIndex]
-    if not DynamicEconomy.fillTypes[fillTypeName] then
+    if not SupplyAndDemand.fillTypes[fillTypeName] then
         populateMissingProducts()
     end
 
-    local fillType = DynamicEconomy.fillTypes[fillTypeName]
+    local fillType = SupplyAndDemand.fillTypes[fillTypeName]
     fillType.recentSold = fillType.recentSold + amountLiters
     fillType.gracePeriod = gracePeriod
 end
@@ -78,7 +78,7 @@ local function repriceSubType(subTypeName)
 
     local function reprice(sellerInfo, func, ...)
         local price = func(sellerInfo, ...)
-        return price * math.min(increaseCap, math.max(decreaseCap, DynamicEconomy.subTypeFactors[subTypeName]))
+        return price * math.min(increaseCap, math.max(decreaseCap, SupplyAndDemand.subTypeFactors[subTypeName]))
     end
 
     return reprice
@@ -86,7 +86,7 @@ end
 
 local function repriceFillType(sellerInfo, func, fillTypeIndex, ...)
     local fillTypeName = g_fillTypeManager.indexToName[fillTypeIndex]
-    local fillTypeFactor = DynamicEconomy.fillTypeFactors[fillTypeName]
+    local fillTypeFactor = SupplyAndDemand.fillTypeFactors[fillTypeName]
     if not fillTypeFactor then
         populateMissingProducts()
         return func(sellerInfo, fillTypeIndex, ...)
@@ -104,12 +104,12 @@ local function populateMissingProducts()
             basePrice = fillType.pricePerLiter,
             gracePeriod = 0
         }
-        if not DynamicEconomy.fillTypes[fillType.name] then
-            DynamicEconomy.fillTypes[fillType.name] = newFillType
+        if not SupplyAndDemand.fillTypes[fillType.name] then
+            SupplyAndDemand.fillTypes[fillType.name] = newFillType
         end
     end
 
-    DynamicEconomy.capturedSubTypes = DynamicEconomy.capturedSubTypes or {}
+    SupplyAndDemand.capturedSubTypes = SupplyAndDemand.capturedSubTypes or {}
     for _, subType in pairs(g_currentMission.animalSystem.subTypes) do
         local newSubType = {
             name = subType.name,
@@ -117,44 +117,44 @@ local function populateMissingProducts()
             factor = increaseCap + 1,
             gracePeriod = 0
         }
-        if not DynamicEconomy.subTypes[subType.name] then
-            DynamicEconomy.subTypes[subType.name] = newSubType
+        if not SupplyAndDemand.subTypes[subType.name] then
+            SupplyAndDemand.subTypes[subType.name] = newSubType
         end
 
-        if not DynamicEconomy.capturedSubTypes[subType.name] then
+        if not SupplyAndDemand.capturedSubTypes[subType.name] then
             subType.sellPrice.interpolator = Utils.overwrittenFunction(subType.sellPrice.interpolator, repriceSubType(subType.name))
         end
 
-        DynamicEconomy.capturedSubTypes[subType.name] = true
+        SupplyAndDemand.capturedSubTypes[subType.name] = true
     end
 
-    DynamicEconomy.fillTypeFactors = {}
-    for _, fillType in pairs(DynamicEconomy.fillTypes) do
-        DynamicEconomy.fillTypeFactors[fillType.name] = fillType.factor
+    SupplyAndDemand.fillTypeFactors = {}
+    for _, fillType in pairs(SupplyAndDemand.fillTypes) do
+        SupplyAndDemand.fillTypeFactors[fillType.name] = fillType.factor
     end
 
-    DynamicEconomy.subTypeFactors = {}
-    for _, subType in pairs(DynamicEconomy.subTypes) do
-        DynamicEconomy.subTypeFactors[subType.name] = subType.factor
+    SupplyAndDemand.subTypeFactors = {}
+    for _, subType in pairs(SupplyAndDemand.subTypes) do
+        SupplyAndDemand.subTypeFactors[subType.name] = subType.factor
     end
 end
 
 local function loadXML()
-    DynamicEconomy.fillTypes = {}
-    DynamicEconomy.subTypes = {}
+    SupplyAndDemand.fillTypes = {}
+    SupplyAndDemand.subTypes = {}
     if not g_currentMission:getIsServer() then
         return populateMissingProducts()
     end
 
-    local XMLPath = g_modSettingsDirectory.."DynamicEconomy.xml"
+    local XMLPath = g_modSettingsDirectory.."SupplyAndDemand.xml"
     local xmlId = 0
     if fileExists(XMLPath) then
-        xmlId = loadXMLFile("DynamicEconomyXML", XMLPath)
+        xmlId = loadXMLFile("SupplyAndDemandXML", XMLPath)
     else
-        xmlId = createXMLFile("DynamicEconomyXML", XMLPath, "DynamicEconomyXML")
+        xmlId = createXMLFile("SupplyAndDemandXML", XMLPath, "SupplyAndDemandXML")
     end
 
-    local savegamePath = "DynamicEconomy.savegame"..tostring(g_currentMission.missionInfo.savegameIndex)
+    local savegamePath = "SupplyAndDemand.savegame"..tostring(g_currentMission.missionInfo.savegameIndex)
     if not g_currentMission.missionInfo.savegameDirectory and hasXMLProperty(xmlId, savegamePath) then
         removeXMLProperty(xmlId, savegamePath)
     end
@@ -169,7 +169,7 @@ local function loadXML()
             basePrice =     getXMLFloat(    xmlId, fillTypePath.."#basePrice"),
             gracePeriod =   getXMLInt(      xmlId,  fillTypePath.."#gracePeriod")
         }
-        DynamicEconomy.fillTypes[fillType.name] = fillType
+        SupplyAndDemand.fillTypes[fillType.name] = fillType
         index = index + 1
     end
 
@@ -182,7 +182,7 @@ local function loadXML()
             factor =        getXMLFloat(    xmlId, subTypePath.."#factor"),
             gracePeriod =   getXMLInt(      xmlId, subTypePath.."#gracePeriod")
         }
-        DynamicEconomy.subTypes[subType.name] = subType
+        SupplyAndDemand.subTypes[subType.name] = subType
         index = index + 1
     end
 
@@ -194,21 +194,21 @@ end
 local function saveXML()
     if not g_currentMission:getIsServer() then return end
 
-    local XMLPath = g_modSettingsDirectory.."DynamicEconomy.xml"
+    local XMLPath = g_modSettingsDirectory.."SupplyAndDemand.xml"
     local xmlId = 0
     if fileExists(XMLPath) then
-        xmlId = loadXMLFile("DynamicEconomyXML", XMLPath)
+        xmlId = loadXMLFile("SupplyAndDemandXML", XMLPath)
     else
-        xmlId = createXMLFile("DynamicEconomyXML", XMLPath, "DynamicEconomy")
+        xmlId = createXMLFile("SupplyAndDemandXML", XMLPath, "SupplyAndDemand")
     end
 
-    local savegamePath = "DynamicEconomy.savegame"..tostring(g_currentMission.missionInfo.savegameIndex)
+    local savegamePath = "SupplyAndDemand.savegame"..tostring(g_currentMission.missionInfo.savegameIndex)
     if hasXMLProperty(xmlId, savegamePath) then
         removeXMLProperty(xmlId, savegamePath)
     end
 
     local index = 0
-    for _, fillType in pairs(DynamicEconomy.fillTypes) do
+    for _, fillType in pairs(SupplyAndDemand.fillTypes) do
         local fillTypePath = savegamePath..".fillTypes.fillType("..tostring(index)..")"
         setXMLString(   xmlId, fillTypePath.."#name",           fillType.name)
         setXMLFloat(    xmlId, fillTypePath.."#recentSold",     fillType.recentSold)
@@ -219,7 +219,7 @@ local function saveXML()
     end
 
     index = 0
-    for _, subType in pairs(DynamicEconomy.subTypes) do
+    for _, subType in pairs(SupplyAndDemand.subTypes) do
         local subTypePath = savegamePath..".subTypes.subType("..tostring(index)..")"
         setXMLString(   xmlId, subTypePath.."#name",            subType.name)
         setXMLFloat(    xmlId, subTypePath.."#recentSold",      subType.recentSold)
@@ -236,7 +236,7 @@ local function hourlyUpdate()
     local growthModeScale = g_currentMission.missionInfo.growthMode % 3
     local daysPerMonthScale = 1 / g_currentMission.missionInfo.plannedDaysPerPeriod
     local demandIncrease = (1 / 288) * daysPerMonthScale * growthModeScale
-    for _, fillType in pairs(DynamicEconomy.fillTypes) do
+    for _, fillType in pairs(SupplyAndDemand.fillTypes) do
         if fillType.gracePeriod < 1 and fillType.recentSold > 0 then
             local demandDecrease = (fillType.recentSold * fillType.basePrice) / annualProfitCap
             fillType.factor = math.max(0, fillType.factor - demandDecrease)
@@ -246,13 +246,13 @@ local function hourlyUpdate()
         end
 
         fillType.factor = math.min(fillType.factor + demandIncrease, increaseCap + 1)
-        DynamicEconomy.fillTypeFactors[fillType.name] = fillType.factor
+        SupplyAndDemand.fillTypeFactors[fillType.name] = fillType.factor
     end
 
     local difficultyMultipliers = {3, 1.8, 1}
     local multiplier = difficultyMultipliers[g_currentMission.missionInfo.economicDifficulty]
     local annualProfitCap = multiplier * annualProfitCap
-    for _, subType in pairs(DynamicEconomy.subTypes) do
+    for _, subType in pairs(SupplyAndDemand.subTypes) do
         if subType.gracePeriod < 1 and subType.recentSold > 0 then
             local demandDecrease = subType.recentSold / annualProfitCap
             subType.factor = math.max(0, subType.factor - demandDecrease)
@@ -262,32 +262,32 @@ local function hourlyUpdate()
         end
 
         subType.factor = math.min(subType.factor + demandIncrease, increaseCap + 1)
-        DynamicEconomy.subTypeFactors[subType.name] = subType.factor
+        SupplyAndDemand.subTypeFactors[subType.name] = subType.factor
     end
 
     broadcastSubTypeFactors()
 end
 
-function DynamicEconomy:loadMap()
+function SupplyAndDemand:loadMap()
     loadXML()
     if not g_currentMission:getIsServer() then return end
 
-    g_messageCenter:subscribe(MessageType.HOUR_CHANGED, hourlyUpdate, DynamicEconomy)
+    g_messageCenter:subscribe(MessageType.HOUR_CHANGED, hourlyUpdate, SupplyAndDemand)
     SellingStation.getEffectiveFillTypePrice = Utils.overwrittenFunction(SellingStation.getEffectiveFillTypePrice, repriceFillType)
     SellingStation.sellFillType = Utils.appendedFunction(SellingStation.sellFillType, catchFillTypeSale)
     AnimalSellEvent.run = Utils.overwrittenFunction(AnimalSellEvent.run, catchSubTypeSale)
     FSBaseMission.saveSavegame = Utils.appendedFunction(FSBaseMission.saveSavegame, saveXML)
 end
 
-function DynamicEconomy:deleteMap()
-    g_messageCenter:unsubscribeAll(DynamicEconomy)
-    removeModEventListener(DynamicEconomy)
+function SupplyAndDemand:deleteMap()
+    g_messageCenter:unsubscribeAll(SupplyAndDemand)
+    removeModEventListener(SupplyAndDemand)
 end
 
-function DynamicEconomy:onClientJoined()
+function SupplyAndDemand:onClientJoined()
     if not g_currentMission:getIsServer() then return end
 
     broadcastSubTypeFactors()
 end
 
-addModEventListener(DynamicEconomy)
+addModEventListener(SupplyAndDemand)
