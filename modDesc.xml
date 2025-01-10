@@ -7,26 +7,30 @@
     </title>
     <description>
         <en><![CDATA[
-Dynamic Economy will adjust the market prices based on a supply-and-demand system.
+Dynamic Economy will adjust the market prices for each product, crop, or animal type based on a supply-and-demand system.
 
-This is to encourage you to branch out into other types of jobs on your farm as your farm grows, and adds a fun competitive element to multiplayer games.
+The market demands an annual supply of each product type. Roughly €75,000 worth on hard. €135,000 on medium, and €225,000 on easy. Doubled if seasonal growth is disabled.
 
-The market demands a supply of €75,000 worth of each product or type of animal annually. €135,000 on medium, and €225,000 on easy difficulty. The demand is doubled when seasonal grown is turned off.
+Selling more than the demanded amount will decrease the prices of a product due to the overabundance. Selling less will increase the prices due to the scarcity.
 
-Prices fluctuate between 10% and 120% of their normal value. A new game starts off with everything in high demand to help provide an early game boost to get started.
+The prices can range between 40% and 120% of normal values.
 
-A minimum 4-hour grace period when selling prevents immediate negative impacts on market prices. You will see the impacts to the market a few hours after selling if you exceed the annual demand.
+A minimum 4-hour grace period allows for selling without immediate negative impacts to prices.
+
+When an operation becomes large enough to produce the amount of product demanded by the market, it is no longer as profitable to expand that operation any further. The goal is to encourage you to branch out into new types of jobs as your farm grows and create a unique competitive element in multiplayer games.
         ]]></en>
         <de><![CDATA[
-        Dynamic Economy wird die Marktpreise auf der Grundlage eines Angebots- und Nachfragesystems anpassen.
+Dynamische Wirtschaft passt die Marktpreise für jedes Produkt, jede Kulturpflanze oder jeden Tiertyp basierend auf einem Angebot-und-Nachfrage-System an.
 
-Dies soll Sie dazu ermutigen, sich anderen Arten von Jobs auf Ihrer Farm zuzuwenden, wenn Ihre Farm wächst, und fügt Multiplayer-Spielen ein unterhaltsames Wettbewerbselement hinzu.
+Der Markt verlangt eine jährliche Versorgung für jeden Produkttyp: etwa 75.000 € auf Schwierigkeitsgrad "Schwer", 135.000 € auf "Mittel" und 225.000 € auf "Leicht". Die Nachfrage verdoppelt sich, wenn das saisonale Wachstum deaktiviert ist.
 
-Der Markt verlangt für jedes Produkt bzw. jede Tierart jährlich einen Vorrat im Wert von 75.000 Euro. 135.000 € im mittleren Schwierigkeitsgrad und 225.000 € im leichten Schwierigkeitsgrad. Der Bedarf verdoppelt sich, wenn der Saisonanbau ausgeschaltet wird.
+Wenn Sie mehr als die geforderte Menge verkaufen, sinken die Preise eines Produkts aufgrund eines Überangebots. Weniger zu verkaufen führt aufgrund von Knappheit zu höheren Preisen.
 
-Die Preise schwanken zwischen 10 % und 120 % ihres Normalwertes. Ein neues Spiel beginnt mit allem, was sehr gefragt ist, um einen frühen Spielschub für den Start zu ermöglichen.
+Die Preise können zwischen 40 % und 120 % des Normalwerts schwanken.
 
-Eine Nachfrist von mindestens 4 Stunden beim Verkauf verhindert unmittelbare negative Auswirkungen auf die Marktpreise. Wenn Sie die jährliche Nachfrage überschreiten, werden Sie die Auswirkungen auf den Markt einige Stunden nach dem Verkauf sehen.
+Eine Mindestnachfrist von 4 Stunden ermöglicht den Verkauf ohne unmittelbare negative Auswirkungen auf die Preise.
+
+Wenn ein Betrieb groß genug wird, um die vom Markt geforderte Menge zu produzieren, wird es weniger profitabel, denselben Betrieb weiter auszubauen. Das Ziel besteht darin, Sie zu ermutigen, mit dem Wachstum Ihres Hofs neue Berufsfelder zu erschließen und ein einzigartiges Wettbewerbselement in Multiplayer-Spielen hinzuzufügen.
         ]]></de>
     </description>
     <iconFilename>icon_dynamicEconomy.dds</iconFilename>
