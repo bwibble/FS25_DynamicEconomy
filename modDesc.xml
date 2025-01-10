@@ -2,12 +2,12 @@
     <author>Beeves</author>
     <version>1.0.0.0</version>
     <title>
-        <en>Dynamic Economy</en>
-        <de>Dynamische Wirtschaft</de>
+        <en>Supply and Demand</en>
+        <de>Angebot und Nachfrage</de>
     </title>
     <description>
         <en><![CDATA[
-Dynamic Economy will adjust the market prices for each product, crop, or animal type based on a supply-and-demand system.
+Adjusts the market prices for each product, crop, or animal type based on a supply-and-demand system.
 
 The market demands an annual supply of each product type. Roughly €75,000 worth on hard. €135,000 on medium, and €225,000 on easy. Doubled if seasonal growth is disabled.
 
@@ -20,22 +20,22 @@ A minimum 4-hour grace period allows for selling without immediate negative impa
 When an operation becomes large enough to produce the amount of product demanded by the market, it is no longer as profitable to expand that operation any further. The goal is to encourage you to branch out into new types of jobs as your farm grows and create a unique competitive element in multiplayer games.
         ]]></en>
         <de><![CDATA[
-Dynamische Wirtschaft passt die Marktpreise für jedes Produkt, jede Kulturpflanze oder jeden Tiertyp basierend auf einem Angebot-und-Nachfrage-System an.
+Passt die Marktpreise für jedes Produkt, jede Kultur oder jeden Tiertyp auf der Grundlage eines Angebots- und Nachfragesystems an.
 
-Der Markt verlangt eine jährliche Versorgung für jeden Produkttyp: etwa 75.000 € auf Schwierigkeitsgrad "Schwer", 135.000 € auf "Mittel" und 225.000 € auf "Leicht". Die Nachfrage verdoppelt sich, wenn das saisonale Wachstum deaktiviert ist.
+Der Markt verlangt von jedem Produkttyp eine jährliche Versorgung. Etwa 75.000 € wert auf hart. 135.000 € für die mittlere Variante und 225.000 € für die leichte Variante. Wird verdoppelt, wenn das saisonale Wachstum deaktiviert ist.
 
-Wenn Sie mehr als die geforderte Menge verkaufen, sinken die Preise eines Produkts aufgrund eines Überangebots. Weniger zu verkaufen führt aufgrund von Knappheit zu höheren Preisen.
+Wenn Sie mehr als die geforderte Menge verkaufen, sinken die Preise eines Produkts aufgrund des Überangebots. Weniger zu verkaufen führt aufgrund der Knappheit zu höheren Preisen.
 
-Die Preise können zwischen 40 % und 120 % des Normalwerts schwanken.
+Die Preise können zwischen 40 % und 120 % des Normalwertes liegen.
 
-Eine Mindestnachfrist von 4 Stunden ermöglicht den Verkauf ohne unmittelbare negative Auswirkungen auf die Preise.
+Eine Nachfrist von mindestens 4 Stunden ermöglicht den Verkauf ohne unmittelbare negative Auswirkungen auf die Preise.
 
-Wenn ein Betrieb groß genug wird, um die vom Markt geforderte Menge zu produzieren, wird es weniger profitabel, denselben Betrieb weiter auszubauen. Das Ziel besteht darin, Sie zu ermutigen, mit dem Wachstum Ihres Hofs neue Berufsfelder zu erschließen und ein einzigartiges Wettbewerbselement in Multiplayer-Spielen hinzuzufügen.
+Wenn ein Betrieb groß genug wird, um die vom Markt geforderte Produktmenge zu produzieren, ist es nicht mehr so ​​profitabel, diesen Betrieb weiter auszubauen. Das Ziel besteht darin, Sie zu ermutigen, mit dem Wachstum Ihrer Farm neue Berufsfelder zu erschließen und ein einzigartiges Wettbewerbselement in Multiplayer-Spielen zu schaffen.
         ]]></de>
     </description>
-    <iconFilename>icon_dynamicEconomy.dds</iconFilename>
+    <iconFilename>icon_supplyAndDemand.dds</iconFilename>
     <multiplayer supported="true"/>
     <extraSourceFiles>
-        <sourceFile filename="script.lua"/>
+        <sourceFile filename="supplyAndDemand.lua"/>
     </extraSourceFiles>
 </modDesc>
