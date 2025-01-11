@@ -38,9 +38,15 @@ end
 
 local function broadcastSubTypeFactors()
     for subTypeName, subTypeFactor in pairs(SupplyAndDemand.subTypeFactors) do
-        g_client:getServerConnection():sendEvent(
-            SupplyAndDemandEvent.new(subTypeName, subTypeFactor)
-        )
+        if g_server ~= nil then
+            g_server:broadcastEvent(
+                SupplyAndDemandEvent.new(subTypeName, subTypeFactor)
+            )
+        else
+            g_client:getServerConnection():sendEvent(
+                SupplyAndDemandEvent.new(subTypeName, subTypeFactor)
+            )
+        end
     end 
 end
 
