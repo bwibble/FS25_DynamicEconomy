@@ -33,7 +33,13 @@ function SupplyAndDemandEvent:writeStream(streamId, connection)
 end
 
 function SupplyAndDemandEvent:run(connection)
-    SupplyAndDemand.subTypeFactors[self.subTypeName] = self.subTypeFactor
+    if not connection:getIsServer() then
+        g_server:broadcastEvent(
+            SupplyAndDemandEvent.new(self.subTypeName, self.subTypeFactor)
+        )
+    else
+        SupplyAndDemand.subTypeFactors[self.subTypeName] = self.subTypeFactor
+    end
 end
 
 local function broadcastSubTypeFactors()
