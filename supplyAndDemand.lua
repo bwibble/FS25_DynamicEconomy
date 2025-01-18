@@ -1,47 +1,4 @@
 ------------------------------------------------------------------------
--- Changes
-
--- display fill type demand factor in game menu
--- correctly display demand factor only on prices screen
-
--- event does both fill type and sub type factors
--- event is a little cleaner
-
--- moved data storage over to game tables instead of own tables
-
--- reworked the way product data is populated
-
--- reworked the way load and save operates
-
--- adjusted hourly updates for neatness
-
--- new setting for accumulation limits
-
--- todo
-
--- display sub type demand factor somewhere in a menu
-
--- find cleaner way to capture animal sales?
-
--- testing checklist
-    -- check price screen and animal menu screens
-        -- ensure both display correctly
-        -- look for spillover issues with incorrect titles elsewhere
-    -- sell product
-        -- ensure no error on product sale
-        -- save and check xml for capture of sales
-        -- sell bulk amount and check for price fluctuations after grace period
-        -- bottom out demand to really be sure no edge case error pops up
-        -- check updates to menu displays on factor changes 
-    -- compare multiplayer prices
-        -- slight variance is typical for fill types, not animals
-        -- repeat tests of fill types
-        -- check that sales are captured both sides and prices adjust
-
-------------------------------------------------------------------------
-
-SupplyAndDemand = {}
-
 --SETTINGS
 ------------------------------------------------------------------------
 -- How much of each product is demanded annually?
@@ -62,6 +19,7 @@ local priceDecreaseLimit = 0.4
 -- Prevents price drops on products being actively sold.
 local graceHours = 4
 ------------------------------------------------------------------------
+SupplyAndDemand = {}
 source(g_currentModDirectory..'supplyAndDemandEvent.lua')
 
 local function clampFactor(factor)
