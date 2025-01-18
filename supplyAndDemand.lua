@@ -62,15 +62,6 @@ local priceDecreaseLimit = 0.4
 -- Prevents price drops on products being actively sold.
 local graceHours = 4
 ------------------------------------------------------------------------
-function SupplyAndDemand:keyEvent(_, sym, _, isDown)
-    if sym == Input.KEY_r and isDown then
-        for k, v in pairs(EconomyManager) do
-            print(tostring(k)..'  =  '..tostring(v or 'nil'))
-        end
-        print(EconomyManager.getPriceMultiplier())
-    end
-end
-
 source(g_currentModDirectory..'supplyAndDemandEvent.lua')
 
 local function clampFactor(factor)
