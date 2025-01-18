@@ -1,58 +1,121 @@
+------------------------------------------------------------------------
+-- Changes
+
+-- display fill type demand factor in game menu
+-- correctly display demand factor only on prices screen
+
+-- event does both fill type and sub type factors
+-- event is a little cleaner
+
+-- moved data storage over to game tables instead of own tables
+
+-- reworked the way product data is populated
+
+-- reworked the way load and save operates
+
+-- adjusted hourly updates for neatness
+
+-- new setting for accumulation limits
+
+-- todo
+
+-- display sub type demand factor somewhere in a menu
+
+-- find cleaner way to capture animal sales?
+
+-- testing checklist
+    -- check price screen and animal menu screens
+        -- ensure both display correctly
+        -- look for spillover issues with incorrect titles elsewhere
+    -- sell product
+        -- ensure no error on product sale
+        -- save and check xml for capture of sales
+        -- sell bulk amount and check for price fluctuations after grace period
+        -- bottom out demand to really be sure no edge case error pops up
+        -- check updates to menu displays on factor changes 
+    -- compare multiplayer prices
+        -- slight variance is typical for fill types, not animals
+        -- repeat tests of fill types
+        -- check that sales are captured both sides and prices adjust
+
+------------------------------------------------------------------------
+
 SupplyAndDemand = {}
 
-local annualProfitCap = 75000
-local increaseCap = 1.2
-local decreaseCap = 0.4
-local gracePeriod = 4
+--SETTINGS
+------------------------------------------------------------------------
+-- How much of each product is demanded annually?
+-- (In terms of money value on hard economy setting.)
+-- Scales automatically to match difficulty setting.
+local annualProductDemand = 75000
 
-SupplyAndDemandEvent = {}
-local SupplyAndDemandEvent_mt = Class(SupplyAndDemandEvent, Event)
-InitEventClass(SupplyAndDemandEvent, "SupplyAndDemandEvent")
+-- Maximum years worth of demand that can accumulate.
+local demandAccumulationCap = 2.2
 
-function SupplyAndDemandEvent.emptyNew()
-    local self = Event.new(SupplyAndDemandEvent_mt)
-    return self
-end
+-- Maximum price multiplier applied to default prices.
+local priceIncreaseLimit = 1.2
 
-function SupplyAndDemandEvent.new(subTypeName, subTypeFactor)
-    local self = SupplyAndDemandEvent.emptyNew()
-    self.subTypeName = subTypeName
-    self.subTypeFactor = subTypeFactor
-    return self
-end
+-- Minimum price multiplier applied to default prices.
+local priceDecreaseLimit = 0.4
 
-function SupplyAndDemandEvent:readStream(streamId, connection)
-    self.subTypeName = streamReadString(streamId)
-    self.subTypeFactor = streamReadFloat32(streamId)
-    self:run(connection)
-end
-
-function SupplyAndDemandEvent:writeStream(streamId, connection)
-    streamWriteString(streamId, self.subTypeName)
-	streamWriteFloat32(streamId, self.subTypeFactor)
-end
-
-function SupplyAndDemandEvent:run(connection)
-    if not connection:getIsServer() then
-        g_server:broadcastEvent(
-            SupplyAndDemandEvent.new(self.subTypeName, self.subTypeFactor)
-        )
-    else
-        SupplyAndDemand.subTypeFactors[self.subTypeName] = self.subTypeFactor
+-- Minimum hours of no selling before sales impact demand.
+-- Prevents price drops on products being actively sold.
+local graceHours = 4
+------------------------------------------------------------------------
+function SupplyAndDemand:keyEvent(_, sym, _, isDown)
+    if sym == Input.KEY_r and isDown then
+        for k, v in pairs(EconomyManager) do
+            print(tostring(k)..'  =  '..tostring(v or 'nil'))
+        end
+        print(EconomyManager.getPriceMultiplier())
     end
 end
 
-local function broadcastSubTypeFactors()
-    for subTypeName, subTypeFactor in pairs(SupplyAndDemand.subTypeFactors) do
-        if g_server ~= nil then
-            g_server:broadcastEvent(
-                SupplyAndDemandEvent.new(subTypeName, subTypeFactor)
-            )
-        else
-            g_client:getServerConnection():sendEvent(
-                SupplyAndDemandEvent.new(subTypeName, subTypeFactor)
-            )
-        end
+source(g_currentModDirectory..'supplyAndDemandEvent.lua')
+
+local function clampFactor(factor)
+    factor = factor or priceIncreaseLimit
+    factor = math.max(factor, priceDecreaseLimit)
+    factor = math.min(factor, priceIncreaseLimit)
+    return factor
+end
+
+local function fetchXML()
+    if not g_currentMission:getIsServer() then
+        return
+    end
+
+    local XMLPath = g_modSettingsDirectory..'SupplyAndDemand.xml'
+    local xmlId = 0
+    local savePath = 'root.savegame'..tostring(g_currentMission.missionInfo.savegameIndex)
+    if fileExists(XMLPath) then
+        xmlId = loadXMLFile('SupplyAndDemandXML', XMLPath)
+    else
+        xmlId = createXMLFile('SupplyAndDemandXML', XMLPath, 'root')
+    end
+
+    return xmlId ~= 0 and xmlId or nil, savePath
+end
+
+local function broadcastFactors()
+    local fillTypeFactors = {}
+    for index, fillType in pairs(g_fillTypeManager.fillTypes) do
+        fillTypeFactors[fillType.name] = fillType.factor
+    end
+
+    local subTypeFactors = {}
+    for index, subType in pairs(g_currentMission.animalSystem.subTypes) do
+        subTypeFactors[subType.name] = subType.factor
+    end
+
+    if g_server ~= nil then
+        g_server:broadcastEvent(
+            SupplyAndDemandEvent.new(fillTypeFactors, subTypeFactors)
+        )
+    else
+        g_client:getServerConnection():sendEvent(
+            SupplyAndDemandEvent.new(fillTypeFactors, subTypeFactors)
+        )
     end 
 end
 
@@ -60,182 +123,150 @@ local function catchSubTypeSale(sellerInfo, func, ...)
     if sellerInfo.sellPrice then
         local clusterId = sellerInfo.clusterId
         local subTypeIndex = sellerInfo.object:getClusterById(clusterId).subTypeIndex
-        local subTypeName = g_currentMission.animalSystem.subTypes[subTypeIndex].name
-        if not SupplyAndDemand.subTypes[subTypeName] then
-            populateMissingProducts()
+        local subType = g_currentMission.animalSystem.subTypes[subTypeIndex]
+        if not subType.recentSold then
+            populateMissingDataPoints()
         end
 
-        local subType = SupplyAndDemand.subTypes[subTypeName]
         subType.recentSold = subType.recentSold + sellerInfo.sellPrice
-        subType.gracePeriod = gracePeriod
+        subType.graceHours = graceHours
     end
 
     return func(sellerInfo, ...)
 end
 
 local function catchFillTypeSale(_, _, amountLiters, fillTypeIndex)
-    local fillTypeName = g_fillTypeManager.indexToName[fillTypeIndex]
-    if not SupplyAndDemand.fillTypes[fillTypeName] then
-        populateMissingProducts()
+    local fillType = g_fillTypeManager.fillTypes[fillTypeIndex]
+    if not fillType.recentSold then
+        populateMissingDataPoints()
     end
 
-    local fillType = SupplyAndDemand.fillTypes[fillTypeName]
     fillType.recentSold = fillType.recentSold + amountLiters
-    fillType.gracePeriod = gracePeriod
+    fillType.graceHours = graceHours
 end
 
-local function repriceSubType(subTypeName)
-
+local function repriceSubType(subType)
     local function reprice(sellerInfo, func, ...)
-        local price = func(sellerInfo, ...)
-        return price * math.min(increaseCap, math.max(decreaseCap, SupplyAndDemand.subTypeFactors[subTypeName]))
+        return func(sellerInfo, ...) * clampFactor(subType.factor)
     end
 
     return reprice
 end
 
 local function repriceFillType(sellerInfo, func, fillTypeIndex, ...)
-    local fillTypeName = g_fillTypeManager.indexToName[fillTypeIndex]
-    local fillTypeFactor = SupplyAndDemand.fillTypeFactors[fillTypeName]
-    if not fillTypeFactor then
-        populateMissingProducts()
-        return func(sellerInfo, fillTypeIndex, ...)
+    local fillType = g_fillTypeManager.fillTypes[fillTypeIndex]
+    if not fillType.factor then
+        populateMissingDataPoints()
     end
 
-    return func(sellerInfo, fillTypeIndex, ...) * math.min(increaseCap, math.max(decreaseCap, fillTypeFactor))
+    return func(sellerInfo, fillTypeIndex, ...) * clampFactor(fillType.factor)
 end
 
-local function populateMissingProducts()
-    for _, fillType in pairs(g_fillTypeManager:getFillTypes()) do
-        local newFillType = {
-            name = fillType.name,
-            recentSold = 0,
-            factor = increaseCap + 1,
-            basePrice = fillType.pricePerLiter,
-            gracePeriod = 0
+local function loadXMLData()
+    local xmlId, savePath = fetchXML()
+    if not xmlId then
+        return
+    end
+
+    local XMLData = {fillTypes = {}, subTypes = {}}
+    local index = 0
+    while hasXMLProperty(xmlId, savePath..'.fillType('..index..')') do
+        local fillTypePath = savePath..'.fillType('..index..')'
+        local fillType = {
+            recentSold = getXMLFloat(xmlId, fillTypePath..'#recentSold'),
+            factor = getXMLFloat(xmlId, fillTypePath..'#factor'),
+            graceHours = getXMLInt(xmlId, fillTypePath..'#graceHours')
         }
-        if not SupplyAndDemand.fillTypes[fillType.name] then
-            SupplyAndDemand.fillTypes[fillType.name] = newFillType
-        end
+        local fillTypeName = getXMLString(xmlId, fillTypePath..'#name')
+        XMLData.fillTypes[fillTypeName] = fillType
+        index = index + 1
     end
 
-    SupplyAndDemand.capturedSubTypes = SupplyAndDemand.capturedSubTypes or {}
-    for _, subType in pairs(g_currentMission.animalSystem.subTypes) do
-        local newSubType = {
-            name = subType.name,
-            recentSold = 0,
-            factor = increaseCap + 1,
-            gracePeriod = 0
+    index = 0
+    while hasXMLProperty(xmlId, savePath..'.subType('..index..')') do
+        local subTypePath = savePath..'.subType('..index..')'
+        local subType = {
+            recentSold = getXMLFloat(xmlId, subTypePath..'#recentSold'),
+            factor = getXMLFloat(xmlId, subTypePath..'#factor'),
+            graceHours = getXMLInt(xmlId, subTypePath..'#graceHours')
         }
-        if not SupplyAndDemand.subTypes[subType.name] then
-            SupplyAndDemand.subTypes[subType.name] = newSubType
-        end
-
-        if not SupplyAndDemand.capturedSubTypes[subType.name] then
-            subType.sellPrice.interpolator = Utils.overwrittenFunction(subType.sellPrice.interpolator, repriceSubType(subType.name))
-        end
-
-        SupplyAndDemand.capturedSubTypes[subType.name] = true
+        local subTypeName = getXMLString(xmlId, subTypePath..'#name')
+        XMLData.subTypes[subTypeName] = subType
+        index = index + 1
     end
 
-    SupplyAndDemand.fillTypeFactors = {}
-    for _, fillType in pairs(SupplyAndDemand.fillTypes) do
-        SupplyAndDemand.fillTypeFactors[fillType.name] = fillType.factor
+    return XMLData
+end
+
+local function populateMissingDataPoints()
+    local XMLData = loadXMLData()
+    for index, fillType in pairs(g_fillTypeManager:getFillTypes()) do
+        local XMLFillType = XMLData.fillTypes[fillType.name]
+        fillType.recentSold = fillType.recentSold or (XMLFillType and XMLFillType.recentSold) or 0
+        fillType.factor = fillType.factor or (XMLFillType and XMLFillType.factor) or demandAccumulationCap
+        fillType.graceHours = fillType.graceHours or (XMLFillType and XMLFillType.graceHours) or 0
     end
 
-    SupplyAndDemand.subTypeFactors = {}
-    for _, subType in pairs(SupplyAndDemand.subTypes) do
-        SupplyAndDemand.subTypeFactors[subType.name] = subType.factor
+    for index, subType in pairs(g_currentMission.animalSystem.subTypes) do
+        local XMLSubType = XMLData.subTypes[subType.name]
+        subType.recentSold = subType.recentSold or (XMLSubType and XMLSubType.recentSold) or 0
+        subType.factor = subType.factor or (XMLSubType and XMLSubType.factor) or demandAccumulationCap
+        subType.graceHours = subType.graceHours or (XMLSubType and XMLSubType.graceHours) or 0
+        if not subType.reprice then
+            subType.reprice = repriceSubType(subType.name)
+            subType.sellPrice.interpolator = Utils.overwrittenFunction(subType.sellPrice.interpolator, subType.reprice)
+        end
     end
 end
 
 local function loadXML()
-    SupplyAndDemand.fillTypes = {}
-    SupplyAndDemand.subTypes = {}
-    if not g_currentMission:getIsServer() then
-        return populateMissingProducts()
+    local xmlId, savePath = fetchXML()
+    if not xmlId then
+        return
     end
 
-    local XMLPath = g_modSettingsDirectory.."SupplyAndDemand.xml"
-    local xmlId = 0
-    if fileExists(XMLPath) then
-        xmlId = loadXMLFile("SupplyAndDemandXML", XMLPath)
-    else
-        xmlId = createXMLFile("SupplyAndDemandXML", XMLPath, "SupplyAndDemand")
+    if not g_currentMission.missionInfo.savegameDirectory then
+        if hasXMLProperty(xmlId, savePath) then
+            removeXMLProperty(xmlId, savePath)
+        end
     end
 
-    local savegamePath = "SupplyAndDemand.savegame"..tostring(g_currentMission.missionInfo.savegameIndex)
-    if not g_currentMission.missionInfo.savegameDirectory and hasXMLProperty(xmlId, savegamePath) then
-        removeXMLProperty(xmlId, savegamePath)
-    end
-
-    local index = 0
-    while hasXMLProperty(xmlId, savegamePath..".fillTypes.fillType("..tostring(index)..")") do
-        local fillTypePath = savegamePath..".fillTypes.fillType("..tostring(index)..")"
-        local fillType = {
-            name =          getXMLString(   xmlId, fillTypePath.."#name"),
-            recentSold =    getXMLFloat(    xmlId, fillTypePath.."#recentSold"),
-            factor =        getXMLFloat(    xmlId, fillTypePath.."#factor"),
-            basePrice =     getXMLFloat(    xmlId, fillTypePath.."#basePrice"),
-            gracePeriod =   getXMLInt(      xmlId,  fillTypePath.."#gracePeriod")
-        }
-        SupplyAndDemand.fillTypes[fillType.name] = fillType
-        index = index + 1
-    end
-
-    index = 0
-    while hasXMLProperty(xmlId, savegamePath..".subTypes.subType("..tostring(index)..")") do
-        local subTypePath = savegamePath..".subTypes.subType("..tostring(index)..")"
-        local subType = {
-            name =          getXMLString(   xmlId, subTypePath.."#name"),
-            recentSold =    getXMLFloat(    xmlId, subTypePath.."#recentSold"),
-            factor =        getXMLFloat(    xmlId, subTypePath.."#factor"),
-            gracePeriod =   getXMLInt(      xmlId, subTypePath.."#gracePeriod")
-        }
-        SupplyAndDemand.subTypes[subType.name] = subType
-        index = index + 1
+    local savePath = 'SupplyAndDemand.savegame'..tostring(g_currentMission.missionInfo.savegameIndex)
+    if not g_currentMission.missionInfo.savegameDirectory and hasXMLProperty(xmlId, savePath) then
+        removeXMLProperty(xmlId, savePath)
     end
 
     saveXMLFile(xmlId)
     delete(xmlId)
-    return populateMissingProducts()
+    populateMissingDataPoints()
 end
 
 local function saveXML()
-    if not g_currentMission:getIsServer() then return end
-
-    local XMLPath = g_modSettingsDirectory.."SupplyAndDemand.xml"
-    local xmlId = 0
-    if fileExists(XMLPath) then
-        xmlId = loadXMLFile("SupplyAndDemandXML", XMLPath)
-    else
-        xmlId = createXMLFile("SupplyAndDemandXML", XMLPath, "SupplyAndDemand")
+    local XMLPath = g_modSettingsDirectory..'SupplyAndDemand.xml'
+    local xmlId, savePath = fetchXML()
+    if not xmlId then
+        return
     end
 
-    local savegamePath = "SupplyAndDemand.savegame"..tostring(g_currentMission.missionInfo.savegameIndex)
-    if hasXMLProperty(xmlId, savegamePath) then
-        removeXMLProperty(xmlId, savegamePath)
+    populateMissingDataPoints()
+    if hasXMLProperty(xmlId, savePath) then
+        removeXMLProperty(xmlId, savePath)
     end
 
-    local index = 0
-    for _, fillType in pairs(SupplyAndDemand.fillTypes) do
-        local fillTypePath = savegamePath..".fillTypes.fillType("..tostring(index)..")"
-        setXMLString(   xmlId, fillTypePath.."#name",           fillType.name)
-        setXMLFloat(    xmlId, fillTypePath.."#recentSold",     fillType.recentSold)
-        setXMLFloat(    xmlId, fillTypePath.."#factor",         fillType.factor)
-        setXMLFloat(    xmlId, fillTypePath.."#basePrice",      fillType.basePrice)
-        setXMLInt(      xmlId, fillTypePath.."#gracePeriod",    fillType.gracePeriod)
-        index = index + 1
+    for index, fillType in pairs(g_fillTypeManager.fillTypes) do
+        local fillTypePath = savePath..'.fillType('..tostring(index - 1)..')'
+        setXMLString(xmlId, fillTypePath..'#name', fillType.name)
+        setXMLFloat(xmlId, fillTypePath..'#recentSold', fillType.recentSold)
+        setXMLFloat(xmlId, fillTypePath..'#factor', fillType.factor)
+        setXMLInt(xmlId, fillTypePath.."#graceHours", fillType.graceHours)
     end
 
-    index = 0
-    for _, subType in pairs(SupplyAndDemand.subTypes) do
-        local subTypePath = savegamePath..".subTypes.subType("..tostring(index)..")"
-        setXMLString(   xmlId, subTypePath.."#name",            subType.name)
-        setXMLFloat(    xmlId, subTypePath.."#recentSold",      subType.recentSold)
-        setXMLFloat(    xmlId, subTypePath.."#factor",          subType.factor)
-        setXMLInt(      xmlId, subTypePath.."#gracePeriod",     subType.gracePeriod)
-        index = index + 1
+    for index, subType in pairs(g_currentMission.animalSystem.subTypes) do
+        local subTypePath = savePath..'.subType('..tostring(index - 1)..')'
+        setXMLString(xmlId, subTypePath..'#name', subType.name)
+        setXMLFloat(xmlId, subTypePath..'#recentSold', subType.recentSold)
+        setXMLFloat(xmlId, subTypePath..'#factor', subType.factor)
+        setXMLInt(xmlId, subTypePath..'#graceHours', subType.graceHours)
     end
 
     saveXMLFile(xmlId)
@@ -246,41 +277,72 @@ local function hourlyUpdate()
     local growthModeScale = g_currentMission.missionInfo.growthMode % 3
     local daysPerMonthScale = 1 / g_currentMission.missionInfo.plannedDaysPerPeriod
     local demandIncrease = (1 / 288) * daysPerMonthScale * growthModeScale
-    for _, fillType in pairs(SupplyAndDemand.fillTypes) do
-        if fillType.gracePeriod < 1 and fillType.recentSold > 0 then
-            local demandDecrease = (fillType.recentSold * fillType.basePrice) / annualProfitCap
-            fillType.factor = math.max(0, fillType.factor - demandDecrease)
-            fillType.recentSold = 0
-        else
-            fillType.gracePeriod = math.max(0, fillType.gracePeriod - 1)
+    local annualSupTypeProfitCap = EconomyManager.getPriceMultiplier() * annualProductDemand
+    if demandIncrease > 0 then
+        for index, fillType in pairs(g_fillTypeManager.fillTypes) do
+            fillType.factor = math.min(fillType.factor + demandIncrease, demandAccumulationCap)
         end
 
-        fillType.factor = math.min(fillType.factor + demandIncrease, increaseCap + 1)
-        SupplyAndDemand.fillTypeFactors[fillType.name] = fillType.factor
+        for index, subType in pairs(g_currentMission.animalSystem.subTypes) do
+            subType.factor = math.min(subType.factor + demandIncrease, demandAccumulationCap)
+        end
     end
 
-    local difficultyMultipliers = {3, 1.8, 1}
-    local multiplier = difficultyMultipliers[g_currentMission.missionInfo.economicDifficulty]
-    local annualProfitCap = multiplier * annualProfitCap
-    for _, subType in pairs(SupplyAndDemand.subTypes) do
-        if subType.gracePeriod < 1 and subType.recentSold > 0 then
-            local demandDecrease = subType.recentSold / annualProfitCap
-            subType.factor = math.max(0, subType.factor - demandDecrease)
-            subType.recentSold = 0
-        else
-            subType.gracePeriod = math.max(0, subType.gracePeriod - 1)
+    for index, fillType in pairs(g_fillTypeManager.fillTypes) do
+        if fillType.recentSold > 0 then
+            if fillType.graceHours > 0 then
+                fillType.graceHours = fillType.graceHours - 1
+            else
+                local demandDecrease = (fillType.recentSold * fillType.pricePerLiter) / annualProductDemand
+                fillType.factor = math.max(fillType.factor - demandDecrease, 0)
+                fillType.recentSold = 0
+            end
+        end
+    end
+
+    for index, subType in pairs(g_currentMission.animalSystem.subTypes) do
+        if subType.recentSold > 0 then
+            if subType.graceHours > 0 then
+                subType.graceHours = subType.graceHours - 1
+            else
+                local demandDecrease = subType.recentSold / annualSupTypeProfitCap
+                subType.factor = math.max(subType.factor - demandDecrease, 0)
+                subType.recentSold = 0
+            end
+        end
+    end
+
+    broadcastFactors()
+end
+
+local function setFillTypeDemandTitles()
+    for index, fillType in pairs(g_fillTypeManager.fillTypes) do
+        if not fillType.factor then
+            populateMissingDataPoints()
         end
 
-        subType.factor = math.min(subType.factor + demandIncrease, increaseCap + 1)
-        SupplyAndDemand.subTypeFactors[subType.name] = subType.factor
+        fillType.defaultTitle = fillType.title
+        fillType.title = string.format('%s (%d%%)', fillType.title, clampFactor(fillType.factor)*100)
     end
+end
 
-    broadcastSubTypeFactors()
+local function setFillTypeDefaultTitles()
+    for index, fillType in pairs(g_fillTypeManager.fillTypes) do
+        if not fillType.factor then
+            populateMissingDataPoints()
+        end
+
+        fillType.title = fillType.defaultTitle or fillType.title
+    end
 end
 
 function SupplyAndDemand:loadMap()
     loadXML()
-    if not g_currentMission:getIsServer() then return end
+    InGameMenuStatisticsFrame.rebuildTable = Utils.prependedFunction(InGameMenuStatisticsFrame.rebuildTable, setFillTypeDemandTitles)
+    InGameMenuStatisticsFrame.onFrameClose = Utils.prependedFunction(InGameMenuStatisticsFrame.onFrameClose, setFillTypeDefaultTitles)
+    if not g_currentMission:getIsServer() then
+        return
+    end
 
     g_messageCenter:subscribe(MessageType.HOUR_CHANGED, hourlyUpdate, SupplyAndDemand)
     SellingStation.getEffectiveFillTypePrice = Utils.overwrittenFunction(SellingStation.getEffectiveFillTypePrice, repriceFillType)
@@ -295,9 +357,11 @@ function SupplyAndDemand:deleteMap()
 end
 
 function SupplyAndDemand:onClientJoined()
-    if not g_currentMission:getIsServer() then return end
+    if not g_currentMission:getIsServer() then
+        return
+    end
 
-    broadcastSubTypeFactors()
+    broadcastFactors()
 end
 
 addModEventListener(SupplyAndDemand)
