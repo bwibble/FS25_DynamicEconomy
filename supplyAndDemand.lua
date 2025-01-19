@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 --SETTINGS
 ------------------------------------------------------------------------
--- How much of each product is demanded annually?
+-- How much of each product is demanded annually
 -- (In terms of money value on hard economy setting.)
 -- Scales automatically to match difficulty setting.
 local annualProductDemand = 75000
