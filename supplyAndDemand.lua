@@ -23,12 +23,16 @@ SupplyAndDemand = {}
 source(g_currentModDirectory..'supplyAndDemandEvent.lua')
 
 local function clampFactor(factor)
-    factor = factor or priceIncreaseLimit
-    factor = math.max(factor, priceDecreaseLimit)
-    factor = math.min(factor, priceIncreaseLimit)
-    return factor
+    if not factor or factor > priceIncreaseLimit then
+        return priceIncreaseLimit
+    elseif factor < priceDecreaseLimit then
+        return priceDecreaseLimit
+    else
+        return factor
+    end
 end
 
+-- Find or make an xml file to load and save at
 local function fetchXML()
     if not g_currentMission:getIsServer() then
         return
@@ -46,6 +50,7 @@ local function fetchXML()
     return xmlId ~= 0 and xmlId or nil, savePath
 end
 
+-- Send factors to custom event to sync prices on multiplayer
 local function broadcastFactors()
     local fillTypeFactors = {}
     for index, fillType in pairs(g_fillTypeManager.fillTypes) do
@@ -68,6 +73,10 @@ local function broadcastFactors()
     end 
 end
 
+-- Record animal sales
+-- Ripping from the event, not ideal, but appears stable...?
+-- Might not work correctly in all cases, I think this only checks for a request to make a sale?
+-- I'm not checking that the sale is actually valid and gets completed?
 local function catchSubTypeSale(sellerInfo, func, ...)
     if sellerInfo.sellPrice then
         local clusterId = sellerInfo.clusterId
@@ -84,6 +93,9 @@ local function catchSubTypeSale(sellerInfo, func, ...)
     return func(sellerInfo, ...)
 end
 
+
+-- Record fill type sales, working fine, even with sales through the train
+-- Still need to check stuff like wood and bales are getting caught
 local function catchFillTypeSale(_, _, amountLiters, fillTypeIndex)
     local fillType = g_fillTypeManager.fillTypes[fillTypeIndex]
     if not fillType.recentSold then
@@ -94,6 +106,8 @@ local function catchFillTypeSale(_, _, amountLiters, fillTypeIndex)
     fillType.graceHours = graceHours
 end
 
+-- Reprice animals, tricky bit to manage as each animal has its own price getting function
+-- Each of those functions gets overwritten with a new one
 local function repriceSubType(subType)
     local function reprice(sellerInfo, func, ...)
         return func(sellerInfo, ...) * clampFactor(subType.factor)
@@ -102,6 +116,8 @@ local function repriceSubType(subType)
     return reprice
 end
 
+-- Simple overwrite, just take the result of the default function and apply the factor multiplication
+-- The game already handles the event sync and everything, we just need to do this server side
 local function repriceFillType(sellerInfo, func, fillTypeIndex, ...)
     local fillType = g_fillTypeManager.fillTypes[fillTypeIndex]
     if not fillType.factor then
@@ -111,13 +127,17 @@ local function repriceFillType(sellerInfo, func, fillTypeIndex, ...)
     return func(sellerInfo, fillTypeIndex, ...) * clampFactor(fillType.factor)
 end
 
+-- Looks for all the data available in the xml and returns it in a table
 local function loadXMLData()
     local xmlId, savePath = fetchXML()
+    local XMLData = {fillTypes = {}, subTypes = {}}
+
+    -- Still return the empty tables, clients have no xml to read
+    -- But the function to populate still needs the tables
     if not xmlId then
-        return
+        return XMLData
     end
 
-    local XMLData = {fillTypes = {}, subTypes = {}}
     local index = 0
     while hasXMLProperty(xmlId, savePath..'.fillType('..index..')') do
         local fillTypePath = savePath..'.fillType('..index..')'
@@ -147,6 +167,11 @@ local function loadXMLData()
     return XMLData
 end
 
+-- Fills in all the missing data points with priority of:
+-- Keep if already set > use xml data if any > use default value
+-- Also fills in missing function overwrites to adjust animal prices
+-- This is sprinkled around to try and catch any new fill types or sub types that
+-- May get thrown in randomly by another mod for some unknown reason
 local function populateMissingDataPoints()
     local XMLData = loadXMLData()
     for index, fillType in pairs(g_fillTypeManager:getFillTypes()) do
@@ -161,28 +186,28 @@ local function populateMissingDataPoints()
         subType.recentSold = subType.recentSold or (XMLSubType and XMLSubType.recentSold) or 0
         subType.factor = subType.factor or (XMLSubType and XMLSubType.factor) or demandAccumulationCap
         subType.graceHours = subType.graceHours or (XMLSubType and XMLSubType.graceHours) or 0
+        -- Reprice overwrites on sub types
         if not subType.reprice then
             subType.reprice = repriceSubType(subType.name)
             subType.sellPrice.interpolator = Utils.overwrittenFunction(subType.sellPrice.interpolator, subType.reprice)
         end
     end
+    delete(xmlId)
 end
 
+-- Long winded version of populateMissingDataPoints that deletes old save data if needed
+-- Called as an initialize behavior at startup on server side
 local function loadXML()
     local xmlId, savePath = fetchXML()
     if not xmlId then
         return
     end
 
+    -- Delete old save data if this is a new game
     if not g_currentMission.missionInfo.savegameDirectory then
         if hasXMLProperty(xmlId, savePath) then
             removeXMLProperty(xmlId, savePath)
         end
-    end
-
-    local savePath = 'SupplyAndDemand.savegame'..tostring(g_currentMission.missionInfo.savegameIndex)
-    if not g_currentMission.missionInfo.savegameDirectory and hasXMLProperty(xmlId, savePath) then
-        removeXMLProperty(xmlId, savePath)
     end
 
     saveXMLFile(xmlId)
@@ -190,6 +215,7 @@ local function loadXML()
     populateMissingDataPoints()
 end
 
+-- Save everything to xml
 local function saveXML()
     local XMLPath = g_modSettingsDirectory..'SupplyAndDemand.xml'
     local xmlId, savePath = fetchXML()
@@ -222,6 +248,10 @@ local function saveXML()
     delete(xmlId)
 end
 
+-- Update all the price factors and demands
+-- Increase the demand scaled to fit the current settings
+-- Drop demand on recently sold items after silence period
+-- Broadcast it all to set clients in sync with any changes
 local function hourlyUpdate()
     local growthModeScale = g_currentMission.missionInfo.growthMode % 3
     local daysPerMonthScale = 1 / g_currentMission.missionInfo.plannedDaysPerPeriod
@@ -264,6 +294,8 @@ local function hourlyUpdate()
     broadcastFactors()
 end
 
+-- Change the titles of fill types just before opening the price page
+-- The title includes the price adjustment when displayed
 local function setFillTypeDemandTitles()
     for index, fillType in pairs(g_fillTypeManager.fillTypes) do
         if not fillType.factor then
@@ -275,6 +307,7 @@ local function setFillTypeDemandTitles()
     end
 end
 
+-- Return the titles back to default when leaving the price page
 local function setFillTypeDefaultTitles()
     for index, fillType in pairs(g_fillTypeManager.fillTypes) do
         if not fillType.factor then
@@ -285,14 +318,19 @@ local function setFillTypeDefaultTitles()
     end
 end
 
+
+-- Mostly just overwrites and hooks to catch sales and reprice products
 function SupplyAndDemand:loadMap()
-    loadXML()
     InGameMenuStatisticsFrame.rebuildTable = Utils.prependedFunction(InGameMenuStatisticsFrame.rebuildTable, setFillTypeDemandTitles)
     InGameMenuStatisticsFrame.onFrameClose = Utils.prependedFunction(InGameMenuStatisticsFrame.onFrameClose, setFillTypeDefaultTitles)
     if not g_currentMission:getIsServer() then
+        -- Just fill up data points without xml data on clients, everything is set to default
+        populateMissingDataPoints()
         return
     end
 
+    -- Stuff that only needs to happen server side
+    loadXML()
     g_messageCenter:subscribe(MessageType.HOUR_CHANGED, hourlyUpdate, SupplyAndDemand)
     SellingStation.getEffectiveFillTypePrice = Utils.overwrittenFunction(SellingStation.getEffectiveFillTypePrice, repriceFillType)
     SellingStation.sellFillType = Utils.appendedFunction(SellingStation.sellFillType, catchFillTypeSale)
@@ -300,11 +338,13 @@ function SupplyAndDemand:loadMap()
     FSBaseMission.saveSavegame = Utils.appendedFunction(FSBaseMission.saveSavegame, saveXML)
 end
 
+-- On session exit, stop the script
 function SupplyAndDemand:deleteMap()
     g_messageCenter:unsubscribeAll(SupplyAndDemand)
     removeModEventListener(SupplyAndDemand)
 end
 
+-- Get clients up to speed when they join
 function SupplyAndDemand:onClientJoined()
     if not g_currentMission:getIsServer() then
         return
