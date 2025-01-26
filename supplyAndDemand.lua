@@ -1,6 +1,6 @@
 SupplyAndDemand = {}
 
-local annualDemand = 75000
+local annualDemand = 35000
 local maxAccumulation = 2.25
 local maxPriceFactor = 1.25
 local minPriceFactor = 0.25
@@ -190,7 +190,7 @@ local function saveDataToXML()
   end
 
   if hasXMLProperty(xmlId, savePath) then
-    removeXMLProperty(xmlId, savePath)
+    removeXMLProperty(xmlId, savePath)`
   end
 
   local index = 0
@@ -244,7 +244,10 @@ local function hourlyUpdate()
       populateMissingDataPoints()
     end
 
-    g_currentMission.generatorFactor = math.min(g_currentMission.generatorFactor + demand_increase, maxAccumulation)
+    g_currentMission.generatorFactor = math.min(
+      g_currentMission.generatorFactor + demand_increase,
+      maxAccumulation
+    )
   end
 
   for index, fillType in pairs(g_fillTypeManager.fillTypes) do
