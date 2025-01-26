@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="94">
     <author>Beeves</author>
     <version>1.0.0.0</version>
@@ -7,30 +8,22 @@
     </title>
     <description>
         <en><![CDATA[
-Adjusts the market prices for each product, crop, or animal type based on a supply-and-demand system.
+This mod dynamically adjusts the prices of crops, goods, animals, and passive income from placeable generators based on selling habits.
 
-The market demands an annual supply of each product type. Roughly €75,000 worth on hard. €135,000 on medium, and €225,000 on easy. Doubled if seasonal growth is disabled.
+No more endlessly farming one crop or product for maximum profit. Be mindful not to overproduce and sell too much of any resource, or risk impacting the local market and dropping the prices.
 
-Selling more than the demanded amount will decrease the prices of a product due to the overabundance. Selling less will increase the prices due to the scarcity.
+Compete with other players in multiplayer games over the supply and demand of resources.
 
-The prices can range between 40% and 120% of normal values.
-
-A minimum 4-hour grace period allows for selling without immediate negative impacts to prices.
-
-When an operation becomes large enough to produce the amount of product demanded by the market, it is no longer as profitable to expand that operation any further. The goal is to encourage you to branch out into new types of jobs as your farm grows and create a unique competitive element in multiplayer games.
+The annual demand of each resource is €35,000 worth on hard, €63,000 on normal, and €105,000 on easy economic difficulty. Doubled if seasonal growth is off.
         ]]></en>
         <de><![CDATA[
-Passt die Marktpreise für jedes Produkt, jede Kultur oder jeden Tiertyp auf der Grundlage eines Angebots- und Nachfragesystems an.
+Dieser Mod passt die Preise für Pflanzen, Waren, Tiere und passives Einkommen aus platzierbaren Generatoren dynamisch an die Verkaufsgewohnheiten an.
 
-Der Markt verlangt von jedem Produkttyp eine jährliche Versorgung. Etwa 75.000 € wert auf hart. 135.000 € für die mittlere Variante und 225.000 € für die leichte Variante. Wird verdoppelt, wenn das saisonale Wachstum deaktiviert ist.
+Sie müssen nicht mehr endlos eine Ernte oder ein Produkt anbauen, um maximalen Gewinn zu erzielen. Achten Sie darauf, nicht zu viel von einer Ressource zu produzieren und zu verkaufen, da Sie sonst das Risiko eingehen, den lokalen Markt zu beeinträchtigen und die Preise zu senken.
 
-Wenn Sie mehr als die geforderte Menge verkaufen, sinken die Preise eines Produkts aufgrund des Überangebots. Weniger zu verkaufen führt aufgrund der Knappheit zu höheren Preisen.
+Messen Sie sich in Multiplayer-Spielen mit anderen Spielern um Angebot und Nachfrage von Ressourcen.
 
-Die Preise können zwischen 40 % und 120 % des Normalwertes liegen.
-
-Eine Nachfrist von mindestens 4 Stunden ermöglicht den Verkauf ohne unmittelbare negative Auswirkungen auf die Preise.
-
-Wenn ein Betrieb groß genug wird, um die vom Markt geforderte Produktmenge zu produzieren, ist es nicht mehr so ​​profitabel, diesen Betrieb weiter auszubauen. Das Ziel besteht darin, Sie zu ermutigen, mit dem Wachstum Ihrer Farm neue Berufsfelder zu erschließen und ein einzigartiges Wettbewerbselement in Multiplayer-Spielen zu schaffen.
+Der jährliche Bedarf jeder Ressource beträgt im schwierigen Schwierigkeitsgrad 35.000 €, im normalen Schwierigkeitsgrad 63.000 € und im einfachen wirtschaftlichen Schwierigkeitsgrad 105.000 €. Wird verdoppelt, wenn das saisonale Wachstum ausfällt.
         ]]></de>
     </description>
     <iconFilename>icon_supplyAndDemand.dds</iconFilename>
