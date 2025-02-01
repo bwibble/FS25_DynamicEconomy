@@ -190,7 +190,7 @@ local function saveDataToXML()
   end
 
   if hasXMLProperty(xmlId, savePath) then
-    removeXMLProperty(xmlId, savePath)`
+    removeXMLProperty(xmlId, savePath)
   end
 
   local index = 0
